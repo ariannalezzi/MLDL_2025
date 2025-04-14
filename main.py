@@ -2,16 +2,15 @@ import os
 import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from models.cityscapes import CityScapes
-from models.deepLabv2.deeplabv2 import get_deeplab_v2
+from datasets.cityscapes import CityScapes
+from models.deeplabv2.deeplabv2 import get_deeplab_v2
 from train import train_one_epoch, validate
 
 # Set device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Hyperparameters
-root_dir = "/content/dataset"  # update path if different
-num_classes = 19
+root_dir = "/content/cityscapes/Cityscapes/Cityspaces" 
 batch_size = 4
 epochs = 50
 base_lr = 0.01
@@ -37,6 +36,7 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=2,
 
 # Model
 model = get_deeplab_v2(num_classes=num_classes, pretrain=False).to(device)
+model.multi_level = False
 
 # Optimizer
 optimizer = torch.optim.SGD(model.optim_parameters(base_lr), lr=base_lr, momentum=0.9, weight_decay=5e-4)
