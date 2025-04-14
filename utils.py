@@ -1,4 +1,7 @@
 import numpy as np
+import time
+import torch
+from ptflops import get_model_complexity_info
 
 
 def poly_lr_scheduler(optimizer, init_lr, iter, lr_decay_iter=1,
@@ -32,3 +35,38 @@ def fast_hist(a, b, n):
 def per_class_iou(hist):
     epsilon = 1e-5
     return (np.diag(hist)) / (hist.sum(1) + hist.sum(0) - np.diag(hist) + epsilon)
+
+#FLOPS and params
+
+def get_model_stats(model, input_shape=(3, 512, 1024), device='cuda'):
+    model.eval().to(device)
+    with torch.cuda.amp.autocast(enabled=False):  # Disable AMP for analysis
+        macs, params = get_model_complexity_info(
+            model,
+            input_shape,
+            as_strings=True,
+            print_per_layer_stat=False,
+            verbose=False
+        )
+    print("\n - FLOPs: {macs}\n - Params: {params}")
+    return macs, params
+
+
+def measure_latency(model, input_shape=(3, 512, 1024), device='cuda', warmup=2, runs=10):
+    model.eval().to(device)
+    dummy_input = torch.randn(1, *input_shape).to(device)
+
+    # Warm-up
+    for _ in range(warmup):
+        _ = model(dummy_input)
+    torch.cuda.synchronize()
+
+    start = time.time()
+    for _ in range(runs):
+        _ = model(dummy_input)
+    torch.cuda.synchronize()
+    end = time.time()
+
+    avg_latency = (end - start) / runs
+    print(f"Avg Latency: {avg_latency * 1000:.2f} ms per image")
+    return avg_latency
