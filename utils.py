@@ -1,8 +1,7 @@
+import torch
 import numpy as np
 import time
-import torch
-from ptflops import get_model_complexity_info
-
+from fvcore.nn import FlopCountAnalysis, flop_count_table
 
 def poly_lr_scheduler(optimizer, init_lr, iter, lr_decay_iter=1,
                       max_iter=300, power=0.9):
@@ -38,35 +37,43 @@ def per_class_iou(hist):
 
 #FLOPS and params
 
-def get_model_stats(model, input_shape=(3, 512, 1024), device='cuda'):
-    model.eval().to(device)
-    with torch.cuda.amp.autocast(enabled=False):  # Disable AMP for analysis
-        macs, params = get_model_complexity_info(
-            model,
-            input_shape,
-            as_strings=True,
-            print_per_layer_stat=False,
-            verbose=False
-        )
-    print("\n - FLOPs: {macs}\n - Params: {params}")
-    return macs, params
+def analyze_flops(model, height, width):
+
+    model = model.cpu()
+    image = torch.zeros((1, 3, height, width))  # added batch dimension
+    flops = FlopCountAnalysis(model, image)
+    print(flop_count_table(flops))
 
 
-def measure_latency(model, input_shape=(3, 512, 1024), device='cuda', warmup=2, runs=10):
-    model.eval().to(device)
-    dummy_input = torch.randn(1, *input_shape).to(device)
 
-    # Warm-up
-    for _ in range(warmup):
-        _ = model(dummy_input)
-    torch.cuda.synchronize()
+def benchmark_model(model, height, width, iterations=1000):
 
-    start = time.time()
-    for _ in range(runs):
-        _ = model(dummy_input)
-    torch.cuda.synchronize()
-    end = time.time()
+    model = model.cpu()
+    image = torch.rand((1, 3, height, width))  # Add batch dimension
+    latency = []
+    fps = []
 
-    avg_latency = (end - start) / runs
-    print(f"Avg Latency: {avg_latency * 1000:.2f} ms per image")
-    return avg_latency
+    # Warm-up (optional but recommended)
+    with torch.no_grad():
+        for _ in range(10):
+            _ = model(image)
+
+    with torch.no_grad():
+        for _ in range(iterations):
+            start = time.time()
+            _ = model(image)
+            end = time.time()
+
+            elapsed = end - start
+            latency.append(elapsed)
+            fps.append(1.0 / elapsed if elapsed > 0 else 0.0)
+
+    latency_ms = [l * 1000 for l in latency]
+    results = {
+        "mean_latency_ms": float(np.mean(latency_ms)),
+        "std_latency_ms": float(np.std(latency_ms)),
+        "mean_fps": float( np.mean(fps)),
+        "std_fps": float(np.std(fps))
+    }
+
+    return results

@@ -2,7 +2,7 @@
 from tqdm import tqdm
 import torch
 import torch.nn as nn
-from utils import *
+from utils_p import *
 
 def train_one_epoch(model, train_loader, optimizer, base_lr, epoch, epochs, device):
 
@@ -80,60 +80,3 @@ def validate(model, test_loader, num_classes, device, best_miou):
     return best_miou, miou, ious
 
   
-
-
-'''
-def validate(model, val_loader, criterion):
-    model.eval()
-    val_loss = 0.0
-    correct, total = 0, 0
-
-    with torch.no_grad():
-        for batch, (inputs, targets) in enumerate(val_loader):
-            inputs, targets = inputs.cuda(), targets.cuda()  # Move to GPU
-
-            outputs = model(inputs)  # Forward pass
-            loss = criterion(outputs, targets)
-
-            val_loss += loss.item()
-            _, predicted = outputs.max(1)
-            total += targets.size(0)
-            correct += predicted.eq(targets).sum().item()
-
-    val_loss /= len(val_loader)
-    val_accuracy = 100. * correct / total
-
-    print(f'Validation Loss: {val_loss:.6f} Acc: {val_accuracy:.2f}%')
-    return val_loss, val_accuracy
-
-
-def train(epoch, model, train_loader, criterion, optimizer):
-    model.train()
-    running_loss = 0.0
-    correct, total = 0, 0
-
-    for batch_idx, (inputs, targets) in enumerate(train_loader):
-        inputs, targets = inputs.cuda(), targets.cuda()  # Move to GPU
-
-        optimizer.zero_grad()
-        outputs = model(inputs)  # Forward pass
-        loss = criterion(outputs, targets)  # Compute loss
-
-        loss.backward()
-        optimizer.step()
-
-        running_loss += loss.item()
-        _, predicted = outputs.max(1)
-        total += targets.size(0)
-        correct += predicted.eq(targets).sum().item()
-
-    train_loss = running_loss / len(train_loader)
-    train_accuracy = 100. * correct / total
-    print(f'Train Epoch: {epoch} Loss: {train_loss:.6f} Acc: {train_accuracy:.2f}%')
-
-    return train_loss, train_accuracy
-
-
-
-'''
-
